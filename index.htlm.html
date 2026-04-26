@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAMBAL BAN SEMAR MESEM 2 - V23</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; }
+        
+        /* PENGATURAN CETAK A5 */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            @page { size: A5 landscape; margin: 5mm; }
+            body { background: white; color: black; font-family: 'Courier New', Courier, monospace; }
+            .nota-box { width: 100%; border: 1px solid black; padding: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { border-bottom: 2px solid black; padding: 5px; text-align: left; font-size: 11px; }
+            td { border-bottom: 1px dashed black; padding: 5px; text-align: left; font-size: 11px; font-weight: bold; }
+        }
+
+        .print-only { display: none; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .modal-bg { background: rgba(0,0,0,0.85); }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-mono text-xs uppercase font-bold">
+
+    <div class="no-print">
+        <!-- NAVIGASI -->
+        <nav class="bg-indigo-700 p-3 shadow-xl sticky top-0 z-50">
+            <div class="container mx-auto flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-black italic tracking-tighter text-white">SEMAR MESEM 2</h1>
+                    <p class="text-[8px] opacity-70 uppercase tracking-widest text-indigo-200">v23.0 - UPDATE DP METHOD</p>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="showPage('kasir')" class="bg-indigo-900 hover:bg-white hover:text-indigo-700 px-3 py-2 rounded transition">🛒 KASIR</button>
+                    <button onclick="showPage('belanja')" class="bg-orange-600 hover:bg-orange-500 px-3 py-2 rounded transition">🚚 BELANJA</button>
+                    <button onclick="showPage('laporan')" class="bg-indigo-900 hover:bg-white hover:text-indigo-700 px-3 py-2 rounded transition font-black">📊 LAPORAN</button>
+                    <button onclick="showPage('piutang')" class="bg-yellow-600 hover:bg-yellow-500 px-3 py-2 rounded text-black transition font-black italic">📝 BON</button>
+                    <button onclick="showPage('gudang')" class="bg-indigo-900 hover:bg-white hover:text-indigo-700 px-3 py-2 rounded transition">📦 MASTER</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- HALAMAN KASIR (FIXED & UPDATED DP) -->
+        <div id="page-kasir" class="container mx-auto p-4 grid grid-cols-12 gap-6 mt-4">
+            <div class="col-span-8 space-y-4">
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <label class="text-indigo-400 font-black">>>> SCAN BARCODE / KODE</label>
+                        <button onclick="toggleManualForm()" class="bg-indigo-600 px-3 py-1 rounded text-[9px] uppercase shadow-lg border border-indigo-400">➕ ITEM LUAR MASTER</button>
+                    </div>
+                    <div id="manual-item-form" class="hidden bg-slate-900 p-4 rounded-lg border-2 border-dashed border-indigo-500 mb-6 space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-black">
+                            <input type="text" id="man-name" placeholder="NAMA BARANG/JASA" class="p-2 rounded font-bold uppercase">
+                            <input type="number" id="man-buy" placeholder="MODAL (Rp)">
+                            <input type="number" id="man-sell" placeholder="JUAL (Rp)">
+                            <input type="number" id="man-qty" placeholder="QTY">
+                        </div>
+                        <button onclick="addManualToCart()" class="w-full bg-indigo-600 p-2 rounded font-black text-white uppercase">TAMBAH KE KERANJANG</button>
+                    </div>
+                    <input type="text" id="barcode-input" onkeypress="handleBarcode(event)" class="w-full bg-slate-950 border-2 border-indigo-500 text-green-400 text-4xl p-4 rounded-lg outline-none font-bold" placeholder="TAP DISINI & SCAN...">
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 h-[450px] overflow-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-700 sticky top-0 font-black text-indigo-200">
+                            <tr><th class="p-3">ITEM</th><th class="p-3 text-right">HARGA</th><th class="p-3 text-center w-20">QTY</th><th class="p-3 text-right">TOTAL</th><th class="p-3 text-center">X</th></tr>
+                        </thead>
+                        <tbody id="cart-table" class="divide-y divide-slate-700 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-span-4 space-y-4 text-right">
+                <div class="bg-black p-6 rounded-xl border-4 border-green-600 shadow-2xl">
+                    <span class="text-green-600 font-black text-[10px]">TOTAL TAGIHAN</span>
+                    <div class="text-5xl font-black text-green-400 mt-2" id="total-display">Rp 0</div>
+                </div>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4 shadow-xl">
+                    <div class="grid grid-cols-3 gap-1 font-black">
+                        <button onclick="setPayment('CASH')" id="btn-CASH" class="pay-btn bg-indigo-600 p-2 rounded border-2 border-white">CASH</button>
+                        <button onclick="setPayment('TRANSFER')" id="btn-TRANSFER" class="pay-btn bg-slate-700 p-2 rounded">TF</button>
+                        <button onclick="setPayment('BON')" id="btn-BON" class="pay-btn bg-slate-700 p-2 rounded text-yellow-400">BON</button>
+                    </div>
+                    <input type="number" id="discount-input" oninput="calcTotal()" class="w-full bg-slate-900 p-3 rounded border border-red-900 text-red-500 text-right font-black" placeholder="DISKON (Rp)">
+                    
+                    <div id="cash-section">
+                        <input type="number" id="cash-input" oninput="calcTotal()" class="w-full bg-slate-900 p-3 rounded border border-slate-600 text-white text-right text-2xl font-black" placeholder="TUNAI (Rp)">
+                        <div id="change-display" class="text-xl font-bold text-yellow-400 text-right mt-2 italic">KEMBALIAN: Rp 0</div>
+                    </div>
+
+                    <div id="bon-section" class="hidden bg-slate-950 p-4 rounded-xl border-l-4 border-yellow-500 space-y-3 font-black uppercase text-left">
+                        <label class="text-[8px] text-yellow-600">METODE PEMBAYARAN DP:</label>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <button onclick="setDPMethod('CASH')" id="dp-CASH" class="dp-btn bg-green-700 p-1.5 rounded text-[9px] border border-white">DP TUNAI</button>
+                            <button onclick="setDPMethod('TRANSFER')" id="dp-TRANSFER" class="dp-btn bg-slate-700 p-1.5 rounded text-[9px]">DP TF</button>
+                        </div>
+                        <input type="number" id="bon-dp" oninput="calcTotal()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-green-400 font-black" placeholder="NOMINAL DP (Rp)">
+                        <input type="text" id="bon-nama" placeholder="NAMA PELANGGAN" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                        <input type="text" id="bon-nopol" placeholder="NOPOL KENDARAAN" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                        <input type="text" id="bon-supir" placeholder="NAMA SUPIR" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-white">
+                    </div>
+                    <button onclick="processPay()" class="w-full bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-xl text-2xl shadow-lg transition active:scale-95">SELESAIKAN NOTA</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HALAMAN LAIN (TETAP SAMA SEPERTI v22) -->
+    <div id="page-laporan" class="container mx-auto p-4 hidden mt-4 bg-slate-800 rounded-xl p-8 border border-emerald-500 shadow-2xl font-mono">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-black text-emerald-400 uppercase italic">📊 Rekap Laporan Penjualan</h2>
+            <input type="date" id="report-date" onchange="renderLaporan()" class="bg-slate-900 border border-slate-600 p-2 rounded text-white font-bold">
+        </div>
+        <div id="report-stats" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 text-center font-black text-[9px]"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 bg-slate-900 rounded-xl overflow-hidden border border-indigo-900">
+                <h3 class="bg-indigo-700 p-3 text-center font-black uppercase text-xs">Riwayat Transaksi</h3>
+                <div class="overflow-auto h-[450px]"><table class="w-full text-[10px] text-left"><thead class="bg-slate-950 sticky top-0"><tr><th class="p-3">JAM</th><th class="p-3">METODE</th><th class="p-3 text-right">TOTAL</th><th class="p-3 text-center">AKSI</th></tr></thead><tbody id="sales-table-body" class="divide-y divide-slate-800 text-slate-300"></tbody></table></div>
+            </div>
+            <div class="lg:col-span-4 bg-slate-900 rounded-xl overflow-hidden border border-orange-900">
+                <h3 class="bg-orange-700 p-3 text-center font-black uppercase text-xs">Belanja</h3>
+                <div class="overflow-auto h-[450px]"><table class="w-full text-[9px] text-left"><tbody id="purchase-table-body" class="divide-y divide-slate-800 text-orange-200 uppercase font-black italic"></tbody></table></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL REVIEW -->
+    <div id="modal-review" class="fixed inset-0 modal-bg z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white text-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden font-sans border-4 border-indigo-600">
+            <div class="bg-indigo-600 p-4 text-white flex justify-between items-center"><h3 class="font-black italic uppercase tracking-widest text-sm text-white">REVIEW DETAIL NOTA</h3><button onclick="closeReview()" class="text-3xl font-black text-white">&times;</button></div>
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto uppercase font-bold text-[11px]">
+                <div id="rev-bon-info" class="hidden bg-yellow-50 p-4 rounded-xl border-2 border-yellow-400 text-yellow-900">
+                    <p>PELANGGAN: <span id="rev-pel" class="text-indigo-600"></span></p>
+                    <p>UNIT/NOPOL: <span id="rev-nop" class="text-indigo-600"></span></p>
+                    <p>NAMA SUPIR: <span id="rev-sup" class="text-indigo-600"></span></p>
+                </div>
+                <div class="flex justify-between border-b pb-2"><p>WAKTU: <span id="rev-time" class="text-indigo-600"></span></p><p>METODE: <span id="rev-method" class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded"></span></p></div>
+                <table class="w-full text-left text-xs font-bold uppercase"><thead class="border-b-2 border-slate-800"><tr><th class="py-2">BARANG / JASA</th><th class="text-center">QTY</th><th class="text-right">HARGA</th><th class="text-right">TOTAL</th></tr></thead><tbody id="rev-items-body" class="divide-y divide-slate-200"></tbody></table>
+                <div class="bg-slate-100 p-5 rounded-2xl text-right font-black"><p class="text-[10px] text-slate-500">SUBTOTAL: <span id="rev-sub"></span></p><p class="text-[10px] text-red-500">DISKON: <span id="rev-disc"></span></p><p class="text-2xl text-slate-900 border-t pt-2">TOTAL: <span id="rev-total"></span></p></div>
+            </div>
+            <div class="p-4 bg-slate-50 flex gap-2"><button onclick="reprintFromReview()" class="flex-1 bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 uppercase tracking-widest shadow-lg">CETAK ULANG NOTA (A5)</button><button onclick="closeReview()" class="w-32 bg-slate-300 text-slate-700 font-bold py-4 rounded-xl uppercase">TUTUP</button></div>
+        </div>
+    </div>
+
+    <!-- AREA PIUTANG & MASTER (v22 INTERNAL) -->
+    <div id="page-piutang" class="container mx-auto p-4 hidden mt-4 bg-slate-800 rounded-xl p-8 border border-yellow-500 shadow-2xl font-mono"><h2 class="text-2xl font-black text-yellow-500 mb-6 italic underline uppercase">Riwayat Piutang BON</h2><div class="bg-slate-950 p-6 rounded-xl border-l-8 border-yellow-600 mb-8 font-black text-4xl text-yellow-500">TOTAL PIUTANG: <span id="stat-total-piutang">0</span></div><table class="w-full text-left text-[9px] uppercase"><thead class="bg-slate-950 text-slate-500"><tr><th>TGL</th><th>PELANGGAN</th><th class="text-right">TOTAL</th><th class="text-right">DP</th><th class="text-right text-yellow-500 font-black">SISA</th><th class="text-center">X</th></tr></thead><tbody id="piutang-table-body" class="divide-y divide-slate-700"></tbody></table></div>
+    <div id="page-belanja" class="container mx-auto p-4 hidden mt-4 bg-slate-800 rounded-xl p-8 border border-orange-500 shadow-2xl"><h2 class="text-2xl font-bold text-orange-500 mb-6 uppercase italic">🚚 Stok Masuk</h2><div class="grid grid-cols-1 md:grid-cols-5 gap-2 bg-slate-900 p-4 rounded text-black font-bold shadow-inner"><input type="text" id="b-code" oninput="fillBelanjaInfo()" placeholder="KODE" class="p-2 uppercase outline-none"><input type="number" id="b-buy-price" placeholder="MODAL"><input type="number" id="b-profit" placeholder="UNTUNG"><input type="number" id="b-jasa" placeholder="JASA"><input type="number" id="b-qty" placeholder="QTY"><button onclick="submitBelanja()" class="bg-orange-600 text-white p-3 rounded font-black md:col-span-5 uppercase">Simpan Data</button></div><p id="b-info" class="mt-4 text-slate-400 font-bold text-center italic"></p></div>
+    <div id="page-gudang" class="container mx-auto p-4 hidden mt-4 bg-slate-800 rounded-xl p-8 border border-slate-700 shadow-2xl font-black italic"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl uppercase italic text-indigo-400">Master Data</h2><button onclick="document.getElementById('m-form').classList.toggle('hidden')" class="bg-indigo-600 px-4 py-2 rounded text-[10px] font-black uppercase">+ Tambah Baru</button></div><div id="m-form" class="hidden bg-slate-900 p-6 rounded-xl border border-indigo-500 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 text-black uppercase shadow-2xl"><select id="m-type" onchange="document.getElementById('m-price-box').classList.toggle('hidden', this.value==='barang')" class="p-2 bg-slate-200 outline-none"><option value="barang">📦 BARANG</option><option value="jasa">🛠️ JASA</option></select><input type="text" id="m-code" placeholder="KODE" class="p-2 bg-slate-200 outline-none"><input type="text" id="m-name" placeholder="NAMA" class="p-2 bg-slate-200 outline-none"><div id="m-price-box" class="hidden"><input type="number" id="m-price" placeholder="HARGA" class="p-2 w-full outline-none"></div><button onclick="saveMaster()" class="bg-indigo-600 p-2 text-white font-black col-span-full uppercase shadow-xl">Simpan ke Master</button></div><table class="w-full text-[9px]"><thead class="bg-slate-950 text-slate-500"><tr><th class="p-4">TIPE</th><th class="p-4">KODE</th><th class="p-4">NAMA</th><th class="p-4 text-right">HARGA JUAL</th><th class="p-4 text-center">STOK</th><th class="p-4 text-center">X</th></tr></thead><tbody id="master-table-body" class="divide-y divide-slate-700"></tbody></table></div>
+
+    <!-- NOTA PRINT AREA (A5 LANDSCAPE - LOCKED DATA) -->
+    <div id="nota-print" class="print-only">
+        <div class="nota-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid black; padding-bottom: 5px;">
+                <div>
+                    <h1 style="font-size: 26px; font-weight: 900; margin: 0;">TAMBAL BAN SEMAR MESEM 2</h1>
+                    <p style="font-size: 11px; margin: 0; font-weight: bold;">JLN BRIGJEN SLAMET RIYADI, LUMAJANG</p>
+                    <p style="font-size: 11px; margin: 0; font-weight: bold;">TELP: 081252693751</p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="font-size: 18px; font-weight: 900; margin: 0;">NOTA PENJUALAN</h2>
+                    <p id="n-tanggal" style="font-size: 10px; margin: 0; font-weight: bold;"></p>
+                </div>
+            </div>
+            <div id="n-info-pelanggan" style="margin-top: 10px; font-size: 11px; display: none; background: #f0f0f0; padding: 5px; border: 1px solid black;">
+                <span id="n-pel"></span> | UNIT: <span id="n-nop"></span> | SUPIR: <span id="n-sup"></span>
+            </div>
+            <table>
+                <thead><tr><th style="width: 30px;">NO</th><th>ITEM / BARANG / JASA</th><th style="text-align: center; width: 60px;">QTY</th><th style="text-align: right; width: 100px;">HARGA</th><th style="text-align: right; width: 120px;">TOTAL</th></tr></thead>
+                <tbody id="n-body"></tbody>
+            </table>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <div style="width: 55%; font-size: 9px; font-style: italic; font-weight: bold; border: 1px solid black; padding: 5px; line-height: 1.2;">
+                    MELAYANI : SEGALA MACAM TAMBAL BAN, BONGKAR PASANG BAN/TUBLES.<br>
+                    MENJUAL : BAN DALAM BARU DAN BEKAS, BAN LUAR BARU DAN BEKAS, BAUT RODA TRUCK, MINYAK REM, STEMPET, KAMPAS GANTUNG TRUCK KECIL DAN BESAR, IMPEX BARU DAN BEKAS, DLL
+                </div>
+                <div style="width: 40%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;"><span>SUBTOTAL:</span><span id="n-sub"></span></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px;"><span>DISKON:</span><span id="n-disc"></span></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; border-top: 1px solid black; margin-top: 2px;"><span>TOTAL:</span><span id="n-total"></span></div>
+                    <div id="n-bon-box" style="display: none; border-top: 1px dashed black; margin-top: 5px; padding-top: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px;"><span id="n-dp-label">DP:</span><span id="n-dp"></span></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: red; font-weight: 900;"><span>SISA BON:</span><span id="n-sisa"></span></div>
+                    </div>
+                    <div style="font-size: 11px; margin-top: 5px; font-weight: 900; text-align: right;">METODE: <span id="n-metode"></span></div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 30px; text-align: center; font-size: 11px; font-weight: bold;"><div style="width: 150px;">PENERIMA,<br><br><br><br>( .................... )</div><div style="width: 150px;">HORMAT KAMI,<br><br><br><br>( .................... )</div></div>
+        </div>
+    </div>
+
+    <script>
+        // CORE DB V23
+        let inventory = JSON.parse(localStorage.getItem('pos_v23_inv')) || [];
+        let salesLogs = JSON.parse(localStorage.getItem('pos_v23_sales')) || [];
+        let purchaseLogs = JSON.parse(localStorage.getItem('pos_v23_purchases')) || [];
+        let cart = [];
+        let payMethod = 'CASH';
+        let dpMethod = 'CASH'; // Default DP method
+        let curRevData = null;
+
+        function showPage(p) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('page-' + p).classList.remove('hidden');
+            if(p === 'kasir') document.getElementById('barcode-input').focus();
+            if(p === 'gudang') renderMaster();
+            if(p === 'laporan') { document.getElementById('report-date').valueAsDate = new Date(); renderLaporan(); }
+            if(p === 'piutang') renderPiutang();
+        }
+
+        // --- KASIR ENGINE (LOCKED & UPDATED) ---
+        function setPayment(m) { 
+            payMethod = m; 
+            document.querySelectorAll('.pay-btn').forEach(b => b.classList.replace('bg-indigo-600', 'bg-slate-700')); 
+            document.getElementById('btn-'+m).classList.replace('bg-slate-700', 'bg-indigo-600'); 
+            document.getElementById('btn-'+m).classList.add('border-white'); 
+            document.getElementById('bon-section').classList.toggle('hidden', m !== 'BON'); 
+            document.getElementById('cash-section').classList.toggle('hidden', m === 'BON'); 
+        }
+
+        function setDPMethod(m) {
+            dpMethod = m;
+            document.querySelectorAll('.dp-btn').forEach(b => {
+                b.classList.replace('bg-green-700', 'bg-slate-700');
+                b.classList.remove('border-white');
+            });
+            document.getElementById('dp-'+m).classList.replace('bg-slate-700', 'bg-green-700');
+            document.getElementById('dp-'+m).classList.add('border-white');
+        }
+
+        function toggleManualForm() { document.getElementById('manual-item-form').classList.toggle('hidden'); }
+        function handleBarcode(e) { if(e.key === 'Enter') { const item = inventory.find(i => i.code === e.target.value.toUpperCase()); if(item) { if(item.type === 'barang' && item.stock <= 0) alert("STOK KOSONG!"); else { const inCart = cart.find(c => c.code === item.code); if(inCart) inCart.qty++; else cart.push({...item, qty: 1, isManual: false}); renderCart(); } } e.target.value = ''; } }
+        function addManualToCart() { const name = document.getElementById('man-name').value, sell = parseInt(document.getElementById('man-sell').value) || 0, buy = parseInt(document.getElementById('man-buy').value) || 0, qty = parseInt(document.getElementById('man-qty').value) || 1; if(!name || sell <= 0) return; cart.push({ code: 'M-'+Date.now(), name: "[M] "+name.toUpperCase(), buyPrice: buy, price: sell, qty: qty, isManual: true, type: 'manual' }); renderCart(); toggleManualForm(); }
+        function renderCart() { document.getElementById('cart-table').innerHTML = cart.map((i, idx) => `<tr><td class="p-3 uppercase font-black text-white">${i.name}</td><td class="p-3 text-right">Rp ${i.price.toLocaleString()}</td><td class="p-3 text-center"><input type="number" onchange="cart[${idx}].qty=parseInt(this.value);renderCart()" value="${i.qty}" class="w-12 bg-slate-900 border border-slate-700 text-center rounded text-indigo-400 font-bold outline-none"></td><td class="p-3 text-right font-black text-green-400">Rp ${(i.price*i.qty).toLocaleString()}</td><td class="p-3 text-center"><button onclick="cart.splice(${idx},1);renderCart()" class="text-red-500 font-bold">✖</button></td></tr>`).join(''); calcTotal(); }
+        function calcTotal() { let sub = cart.reduce((a, b) => a + (b.price * b.qty), 0), disc = parseInt(document.getElementById('discount-input').value) || 0, cash = parseInt(document.getElementById('cash-input').value) || 0, grand = sub - disc; document.getElementById('total-display').innerText = "Rp " + (grand >= 0 ? grand.toLocaleString() : 0); document.getElementById('change-display').innerText = "KEMBALIAN: Rp " + (cash - grand >= 0 ? (cash - grand).toLocaleString() : 0); }
+
+        function processPay() {
+            if(cart.length === 0) return;
+            const sub = cart.reduce((a, b) => a + (b.price * b.qty), 0), disc = parseInt(document.getElementById('discount-input').value) || 0, grand = sub - disc, dp = parseInt(document.getElementById('bon-dp').value) || 0;
+            if(payMethod === 'CASH' && document.getElementById('cash-input').value < grand) return alert("UANG KURANG!");
+            if(payMethod === 'BON' && !document.getElementById('bon-nama').value) return alert("NAMA PELANGGAN WAJIB!");
+
+            let pBrg = 0, pJasa = 0;
+            cart.forEach(item => {
+                if(!item.isManual && item.type === 'barang') { const idx = inventory.findIndex(inv => inv.code === item.code); inventory[idx].stock -= item.qty; pBrg += ((item.price - item.buyPrice - item.serviceFee) * item.qty); pJasa += (item.serviceFee * item.qty); } 
+                else { pJasa += ((item.price - (item.buyPrice || 0)) * item.qty); }
+            });
+
+            const logData = { id: Date.now(), date: new Date().toISOString().split('T')[0], timestamp: new Date().toLocaleString(), method: payMethod, dpMethod: (payMethod === 'BON' ? dpMethod : null), subtotal: sub, discount: disc, grand: grand, dp: dp, piutang: (payMethod === 'BON' ? grand - dp : 0), pBrg: pBrg - disc, pJasa: pJasa, cart: [...cart], pelanggan: document.getElementById('bon-nama').value.toUpperCase(), nopol: document.getElementById('bon-nopol').value.toUpperCase(), supir: document.getElementById('bon-supir').value.toUpperCase() };
+            salesLogs.push(logData); localStorage.setItem('pos_v23_inv', JSON.stringify(inventory)); localStorage.setItem('pos_v23_sales', JSON.stringify(salesLogs));
+
+            printReceipt(logData);
+            location.reload();
+        }
+
+        // --- PRINT ENGINE ---
+        function printReceipt(data) {
+            document.getElementById('n-tanggal').innerText = data.timestamp;
+            document.getElementById('n-body').innerHTML = data.cart.map((i, idx) => `<tr><td>${idx+1}</td><td>${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:right">${i.price.toLocaleString()}</td><td style="text-align:right">${(i.price*i.qty).toLocaleString()}</td></tr>`).join('');
+            document.getElementById('n-sub').innerText = "Rp " + data.subtotal.toLocaleString();
+            document.getElementById('n-disc').innerText = "-Rp " + data.discount.toLocaleString();
+            document.getElementById('n-total').innerText = "Rp " + data.grand.toLocaleString();
+            document.getElementById('n-metode').innerText = data.method;
+            if(data.method === 'BON') {
+                document.getElementById('n-info-pelanggan').style.display = 'block'; document.getElementById('n-pel').innerText = data.pelanggan; document.getElementById('n-nop').innerText = data.nopol; document.getElementById('n-sup').innerText = data.supir; 
+                document.getElementById('n-bon-box').style.display = 'block'; 
+                document.getElementById('n-dp-label').innerText = "DP (" + data.dpMethod + "):";
+                document.getElementById('n-dp').innerText = "Rp " + data.dp.toLocaleString(); 
+                document.getElementById('n-sisa').innerText = "Rp " + data.piutang.toLocaleString();
+            } else { document.getElementById('n-info-pelanggan').style.display = 'none'; document.getElementById('n-bon-box').style.display = 'none'; }
+            window.print();
+        }
+
+        function openReview(id) {
+            const data = salesLogs.find(l => l.id === id); curRevData = data;
+            document.getElementById('rev-time').innerText = data.timestamp;
+            document.getElementById('rev-method').innerText = data.method + (data.dpMethod ? " (DP via " + data.dpMethod + ")" : "");
+            document.getElementById('rev-sub').innerText = "Rp " + data.subtotal.toLocaleString();
+            document.getElementById('rev-disc').innerText = "Rp " + data.discount.toLocaleString();
+            document.getElementById('rev-total').innerText = "Rp " + data.grand.toLocaleString();
+            if(data.method === 'BON') { document.getElementById('rev-bon-info').classList.remove('hidden'); document.getElementById('rev-pel').innerText = data.pelanggan; document.getElementById('rev-nop').innerText = data.nopol; document.getElementById('rev-sup').innerText = data.supir; } 
+            else { document.getElementById('rev-bon-info').classList.add('hidden'); }
+            document.getElementById('rev-items-body').innerHTML = data.cart.map(i => `<tr><td class="py-2">${i.name}</td><td class="text-center">${i.qty}</td><td class="text-right">${i.price.toLocaleString()}</td><td class="text-right">${(i.price*i.qty).toLocaleString()}</td></tr>`).join('');
+            document.getElementById('modal-review').classList.remove('hidden');
+        }
+
+        function closeReview() { document.getElementById('modal-review').classList.add('hidden'); }
+        function reprintFromReview() { if(curRevData) printReceipt(curRevData); }
+
+        // --- LAPORAN ENGINE ---
+        function renderLaporan() {
+            const date = document.getElementById('report-date').value, fSales = salesLogs.filter(l => l.date === date);
+            let cashTf = 0, totalDP = 0, pBrg = 0, pJasa = 0, totalPiutang = 0;
+            document.getElementById('sales-table-body').innerHTML = fSales.map(l => {
+                if(l.method === 'BON') { totalPiutang += l.piutang; totalDP += l.dp; } else { cashTf += l.grand; }
+                pBrg += l.pBrg; pJasa += l.pJasa;
+                return `<tr><td class="p-3 font-bold">${l.timestamp.split(', ')[1]}</td><td class="p-3 ${l.method==='BON'?'text-yellow-500':'text-indigo-400'}">${l.method}</td><td class="p-3 text-right">Rp ${l.grand.toLocaleString()}</td><td class="p-3 text-center"><button onclick="openReview(${l.id})" class="bg-indigo-600 px-2 py-1 rounded text-[8px] font-black uppercase text-white">Review</button> <button onclick="deleteSale(${l.id})" class="bg-red-900 px-1 rounded font-bold text-white">✖</button></td></tr>`;
+            }).reverse().join('');
+            const fPurchases = purchaseLogs.filter(l => l.date === date);
+            let totalBeli = 0;
+            document.getElementById('purchase-table-body').innerHTML = fPurchases.map(l => { totalBeli += l.total; return `<tr class="border-b border-slate-800"><td class="p-2">${l.name}</td><td class="p-2 text-right">Rp ${l.total.toLocaleString()}</td></tr>`; }).reverse().join('');
+            document.getElementById('report-stats').innerHTML = `<div class="bg-indigo-900 p-2 rounded shadow-xl">TUNAI: Rp ${cashTf.toLocaleString()}</div><div class="bg-green-900 p-2 rounded shadow-xl">DP BON: Rp ${totalDP.toLocaleString()}</div><div class="bg-yellow-900 p-2 rounded shadow-xl text-yellow-100">PIUTANG: Rp ${totalPiutang.toLocaleString()}</div><div class="bg-slate-900 p-2 rounded shadow-xl text-orange-400">BELANJA: Rp ${totalBeli.toLocaleString()}</div><div class="bg-white text-black p-2 rounded shadow-xl font-black italic underline text-xs">LABA: Rp ${(pBrg+pJasa).toLocaleString()}</div>`;
+        }
+
+        function deleteSale(id) { if(confirm("HAPUS TRANSAKSI INI?")) { salesLogs = salesLogs.filter(i => i.id !== id); localStorage.setItem('pos_v23_sales', JSON.stringify(salesLogs)); renderLaporan(); } }
+
+        function renderPiutang() {
+            const fBon = salesLogs.filter(l => l.method === 'BON');
+            let totalPiutang = 0;
+            document.getElementById('piutang-table-body').innerHTML = fBon.map(l => {
+                totalPiutang += l.piutang;
+                return `<tr class="hover:bg-slate-700/50 uppercase"><td class="p-3">${l.timestamp.split(', ')[0]}</td><td class="p-3 text-indigo-400 font-bold">${l.pelanggan}<br><span class="text-[7px] text-slate-500 font-black">${l.nopol} | DP via ${l.dpMethod}</span></td><td class="p-3 text-right">Rp ${l.grand.toLocaleString()}</td><td class="p-3 text-right">Rp ${l.dp.toLocaleString()}</td><td class="p-3 text-right text-yellow-400 font-black">Rp ${l.piutang.toLocaleString()}</td><td class="p-3 text-center"><button onclick="openReview(${l.id})" class="bg-indigo-600 px-2 py-1 rounded text-[8px] text-white">Review</button> <button onclick="deleteSale(${l.id});renderPiutang();" class="bg-red-900 px-1 py-1 rounded text-[8px] text-white">LUNAS</button></td></tr>`;
+            }).reverse().join('');
+            document.getElementById('stat-total-piutang').innerText = "Rp " + totalPiutang.toLocaleString();
+        }
+
+        // --- MASTER ENGINE ---
+        function renderMaster() { document.getElementById('master-table-body').innerHTML = inventory.map(p => `<tr><td class="p-4 font-black italic text-indigo-400">${p.type}</td><td class="p-4 font-bold text-slate-500">${p.code}</td><td class="p-4 uppercase font-black text-white">${p.name}</td><td class="p-4 text-right font-black text-indigo-400 text-sm">Rp ${p.price.toLocaleString()}</td><td class="p-4 text-center font-black">${p.type==='jasa'?'∞':p.stock}</td><td class="p-4 text-center"><button onclick="inventory=inventory.filter(i=>i.code!=='${p.code}');localStorage.setItem('pos_v23_inv',JSON.stringify(inventory));renderMaster()" class="text-red-500 font-bold">✖</button></td></tr>`).join(''); }
+        function saveMaster() { const t=document.getElementById('m-type').value, c=document.getElementById('m-code').value.toUpperCase(), n=document.getElementById('m-name').value.toUpperCase(), p=t==='jasa'?parseInt(document.getElementById('m-price').value):0; if(!c||!n)return; inventory.push({type:t,code:c,name:n,price:p,buyPrice:0,serviceFee:0,stock:(t==='jasa'?99999:0)}); localStorage.setItem('pos_v23_inv',JSON.stringify(inventory)); renderMaster(); document.getElementById('m-form').classList.add('hidden'); }
+        function submitBelanja() { const c=document.getElementById('b-code').value.toUpperCase(), b=parseInt(document.getElementById('b-buy-price').value), p=parseInt(document.getElementById('b-profit').value), j=parseInt(document.getElementById('b-jasa').value), q=parseInt(document.getElementById('b-qty').value); const idx=inventory.findIndex(i=>i.code===c); if(idx===-1)return alert("KODE TIDAK ADA!"); inventory[idx].buyPrice=b; inventory[idx].price=b+p+j; inventory[idx].serviceFee=j; inventory[idx].stock+=q; purchaseLogs.push({date:new Date().toISOString().split('T')[0],time:new Date().toLocaleTimeString(),name:inventory[idx].name,total:b*q}); localStorage.setItem('pos_v23_inv', JSON.stringify(inventory)); localStorage.setItem('pos_v23_purchases', JSON.stringify(purchaseLogs)); location.reload(); }
+        function fillBelanjaInfo() { const p = inventory.find(i => i.code === document.getElementById('b-code').value.toUpperCase()); document.getElementById('b-info').innerText = p ? "ITEM: " + p.name : "KODE TIDAK DITEMUKAN"; }
+
+        window.onload = () => showPage('kasir');
+    </script>
+</body>
+</html>
